@@ -1,22 +1,25 @@
 const express = require('express');
 const path = require('path');
-const cors = require('cors'); // ይህ ለደህንነት አስፈላጊ ነው
+const cors = require('cors'); 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
+
+// ፋይሎቹ በሙሉ ውጭ (root) ላይ ስለሆኑ በቀጥታ እንዲያገለግል ያደርጋል
 app.use(express.static(__dirname));
 
-// ለጊዜው ዳታቤዝ ስለሌለን ብሩን እዚህ እናስቀምጠዋለን (ሰርቨሩ ሲጠፋ ይጠፋል)
-// ለወደፊቱ ከ MongoDB ጋር ማገናኘት ትችላለህ
+// ለጊዜው ዳታቤዝ ስለሌለን ብሩን እዚህ እናስቀምጣለን (ሰርቨሩ ሲጠፋ ይጠፋል)
 let userBalance = 0;
 
-// ብር እንዲጨምር የሚያደርግ Route
+// ብር እንዲጨመር የሚያደርግ Route
 app.post('/update-balance', (req, res) => {
     const { amount } = req.body;
     if (typeof amount === 'number') {
         userBalance += amount;
+        console.log(`Balance updated: ${userBalance}`);
         return res.json({ success: true, balance: userBalance });
     }
     res.status(400).json({ success: false, message: "Invalid amount" });
@@ -27,6 +30,7 @@ app.get('/get-balance', (req, res) => {
     res.json({ balance: userBalance });
 });
 
+// ዋናውን index.html ፋይል ለመክፈት
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
