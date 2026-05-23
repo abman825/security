@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Abe's Pro Arcade - Infinite Levels</title>
-    
+
     <script async="async" data-cfasync="false" src="https://pl29525689.effectivecpmnetwork.com/d9c95bb7e605081de3e961cccc14a6a6/invoke.js"></script>
 
     <style>
         :root { --neon-blue: #00f2ff; --neon-pink: #e94560; --neon-gold: #ffd700; }
         body { margin: 0; padding: 0; overflow: hidden; background: #050510; font-family: sans-serif; touch-action: none; }
         canvas { display: block; }
-        
+
         #ui { 
             position: absolute; top: 0; width: 100%; display: flex; 
             justify-content: space-around; padding: 15px 0;
@@ -89,7 +89,7 @@
         <div class="panel ad-container">
             <h2 id="adTitle" style="color: var(--neon-pink); margin: 0;">ማስታወቂያ</h2>
             <p id="adDesc" style="margin: 5px 0; color: #ccc;">ደረጃውን ለማዳን እባክዎ በትዕግስት ይጠብቁ...</p>
-            
+
             <div class="ad-box">
                 <div id="container-d9c95bb7e605081de3e961cccc14a6a6"></div>
             </div>
@@ -107,7 +107,7 @@
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
+
         let score = 0, level = 1, isPaused = false, gameActive = true;
         let walletBalance = 0;
         let paddle, ball, bricks = [], particles = [], powerUps = [];
@@ -167,7 +167,7 @@
         function init() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            
+
             const config = levelConfigs[Math.min(level - 1, levelConfigs.length - 1)];
 
             paddle = { 
@@ -177,7 +177,7 @@
                 color: '#00f2ff' 
             };
             ball = { x: canvas.width/2, y: paddle.y - 20, r: 8, dx: config.speed, dy: -config.speed };
-            
+
             const bW = 45; 
             const bH = 22; 
             bricks = [];
@@ -190,7 +190,7 @@
                 bricks[c] = [];
                 for(let r=0; r < config.rows; r++) {
                     let showBrick = false;
-                    
+
                     if (level === 1) {
                         if (r <= c && r <= (config.cols - 1 - c)) showBrick = true;
                     } 
@@ -243,7 +243,7 @@
                 ball.y + ball.r >= paddle.y && 
                 ball.y + ball.r <= paddle.y + paddle.h &&
                 ball.x >= paddle.x && ball.x <= paddle.x + paddle.w) {
-                
+
                 let hitPos = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
                 let speed = Math.sqrt(ball.dx**2 + ball.dy**2);
                 ball.dx = speed * hitPos;
@@ -383,7 +383,7 @@
             }, 1000);
         }
 
-
+        
         function closeAdVideo() {
             document.getElementById('adOverlay').style.display = 'none';
             clearInterval(adCountdownTimer);
@@ -404,7 +404,7 @@
 
         function openSettings() { isPaused = true; document.getElementById('settingsMenu').style.display = 'flex'; }
         function closeSettings() { isPaused = false; document.getElementById('settingsMenu').style.display = 'none'; }
-        function togglePause() { isPaused = !isPaused; document.getElementById('pauseBtn').innerText = isPaused ? '' : '⏸'; }
+        function togglePause() { isPaused = !isPaused; document.getElementById('pauseBtn').innerText = isPaused ? '▶️' : '⏸'; }
 
         const move = e => {
             let x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
@@ -417,4 +417,3 @@
     </script>
     <script src="https://pl29525688.effectivecpmnetwork.com/c3/7f/56/c37f5647a9089b9164d698458795dddd.js"></script>
 </body>
-</html>
