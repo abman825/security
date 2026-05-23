@@ -21,7 +21,7 @@
 
         #walletUi { color: var(--neon-gold); text-shadow: 0 0 10px var(--neon-gold); }
 
-        .icon-btn {
+        .icon-btn { 
             position: absolute; background: rgba(233, 69, 96, 0.2); 
             color: white; border: 1px solid var(--neon-pink); border-radius: 12px; 
             cursor: pointer; display: flex; justify-content: center; align-items: center; 
@@ -30,7 +30,6 @@
         #pauseBtn { bottom: 25px; right: 25px; width: 60px; height: 60px; font-size: 24px; }
         #settingsBtn { bottom: 25px; left: 25px; width: 60px; height: 60px; font-size: 24px; }
 
-        
         .overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(5, 5, 20, 0.95); display: none; 
@@ -47,7 +46,9 @@
             padding: 12px 30px; border-radius: 50px; font-weight: bold; 
             cursor: pointer; margin-top: 15px; font-size: 16px;
         }
-        .main-btn:disabled { background: #555; color: #aaa; cursor: not-allowed; }
+        .main-btn:disabled {
+            background: #555; color: #aaa; cursor: not-allowed;
+        }
 
         .ad-container { display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .ad-timer { font-size: 48px; color: var(--neon-pink); font-weight: bold; margin: 20px 0; }
@@ -88,9 +89,11 @@
         <div class="panel ad-container">
             <h2 id="adTitle" style="color: var(--neon-pink); margin: 0;">ማስታወቂያ</h2>
             <p id="adDesc" style="margin: 5px 0; color: #ccc;">ደረጃውን ለማዳን እባክዎ በትዕግስት ይጠብቁ...</p>
+            
             <div class="ad-box">
                 <div id="container-d9c95bb7e605081de3e961cccc14a6a6"></div>
             </div>
+
             <div id="adTimer" class="ad-timer">30</div>
             <button id="adCloseBtn" class="main-btn" disabled onclick="closeAdVideo()">ማስታወቂያ ዝለል ⏩</button>
         </div>
@@ -99,9 +102,6 @@
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        // *** አድራሻ - ይሄ የ Render ሊንክህ ነው ***
-        const BACKEND_URL = "https://tenis-kudk.onrender.com"; 
-
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
@@ -110,31 +110,6 @@
         let paddle, ball, bricks = [], particles = [], powerUps = [];
         let currentAdMode = "";
         let adCountdownTimer;
-
-        // ሰርቨር ላይ ዳታ ለመቆጠብ የሚረዳ ፈንክሽን
-        async function updateWalletOnServer(amount) {
-            try {
-                const response = await fetch(`${BACKEND_URL}/update-balance`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: amount })
-                });
-                const data = await response.json();
-                console.log("Wallet Updated:", data);
-            } catch (err) {
-                console.error("Server update failed:", err);
-            }
-        }
-
-        // ሰርቨር ላይ ያለውን ባላንስ ለማምጣት
-        async function fetchBalance() {
-            try {
-                const res = await fetch(`${BACKEND_URL}/get-balance`);
-                const data = await res.json();
-                walletBalance = data.balance || 0;
-                document.getElementById('balance').innerText = walletBalance;
-            } catch (e) { console.log("Fetch failed"); }
-        }
 
         const levelConfigs = [
             { rows: 3, cols: 5, speed: 5, paddleW: 160 },
@@ -161,12 +136,21 @@
         function init() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            
             const config = levelConfigs[Math.min(level - 1, levelConfigs.length - 1)];
 
-            paddle = { w: config.paddleW, h: 15, x: (canvas.width - config.paddleW)/2, y: canvas.height - 60, color: '#00f2ff' };
+            paddle = { 
+                w: config.paddleW, h: 15, 
+                x: (canvas.width - config.paddleW)/2, 
+                y: canvas.height - 60, 
+                color: '#00f2ff' 
+            };
             ball = { x: canvas.width/2, y: paddle.y - 20, r: 8, dx: config.speed, dy: -config.speed };
             
-            const bW = 45; const bH = 22; bricks = [];
+            const bW = 45; 
+            const bH = 22; 
+            bricks = [];
+
             let centerX = Math.floor(config.cols / 2);
             let centerY = Math.floor(config.rows / 2);
             let offSetX = (canvas.width - (config.cols * bW)) / 2;
@@ -174,36 +158,73 @@
             for(let c=0; c < config.cols; c++) {
                 bricks[c] = [];
                 for(let r=0; r < config.rows; r++) {
-                    let showBrick = true; // Simplified for testing
-                    bricks[c][r] = { x: offSetX + (c * bW), y: r * bH + 120, w: bW - 4, h: bH - 4, status: 1, color: `hsl(${(level * 60) + (r * 15)}, 85%, 60%)` };
+                    let showBrick = false;
+                    
+                    if (level === 1) {
+                        if (r <= c && r <= (config.cols - 1 - c)) showBrick = true;
+                    } 
+                    else if (level === 2) {
+                        let dist = Math.abs(c - centerX) + Math.abs(r - centerY);
+                        if (dist <= centerX) showBrick = true;
+                    } 
+                    else if (level === 3) {
+                        let dist1 = Math.sqrt((c - 2)**2 + (r - 2)**2);
+                        let dist2 = Math.sqrt((c - (config.cols-3))**2 + (r - 2)**2);
+                        if (dist1 < 3 || dist2 < 3) showBrick = true;
+                    } 
+                    else {
+                        if (c === centerX || r === centerY || c === 0 || c === config.cols-1) showBrick = true;
+                    }
+
+                    if(showBrick) {
+                        bricks[c][r] = { 
+                            x: offSetX + (c * bW), 
+                            y: r * bH + 120, 
+                            w: bW - 4, h: bH - 4, 
+                            status: 1, 
+                            color: `hsl(${(level * 60) + (r * 15)}, 85%, 60%)` 
+                        };
+                    } else {
+                        bricks[c][r] = { status: 0 };
+                    }
                 }
             }
             particles = []; powerUps = [];
             document.getElementById('level').innerText = level;
-            fetchBalance(); // Initialize balance from server
+            document.getElementById('balance').innerText = walletBalance;
         }
 
-        function draw() {
-            ctx.fillStyle = '#050510';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            bricks.flat().forEach(b => { if(b.status === 1) { ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h); } });
-            ctx.fillStyle = paddle.color;
-            ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-            ctx.fillStyle = "#fff";
-            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
-            
-            update(); requestAnimationFrame(draw);
+        function createParticles(x, y, color) {
+            for(let i=0; i<6; i++) {
+                particles.push({ x, y, dx: (Math.random()-0.5)*4, dy: (Math.random()-0.5)*4, life: 1, color });
+            }
         }
 
         function update() {
             if(isPaused || !gameActive) return;
+
             ball.x += ball.dx; ball.y += ball.dy;
+
             if(ball.x + ball.r > canvas.width || ball.x - ball.r < 0) ball.dx *= -1;
             if(ball.y - ball.r < 0) ball.dy *= -1;
-            if (ball.dy > 0 && ball.y + ball.r >= paddle.y && ball.x >= paddle.x && ball.x <= paddle.x + paddle.w) {
-                ball.dy *= -1; playSound(440);
+
+            if (ball.dy > 0 && 
+                ball.y + ball.r >= paddle.y && 
+                ball.y + ball.r <= paddle.y + paddle.h &&
+                ball.x >= paddle.x && ball.x <= paddle.x + paddle.w) {
+                
+                let hitPos = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
+                let speed = Math.sqrt(ball.dx**2 + ball.dy**2);
+                ball.dx = speed * hitPos;
+                ball.dy = -Math.sqrt(speed**2 - ball.dx**2);
+                ball.y = paddle.y - ball.r; 
+                playSound(440);
             }
-            if(ball.y > canvas.height) { gameActive = false; showLoseMessage(); }
+
+            if(ball.y - ball.r > canvas.height) {
+                gameActive = false;
+                showLoseMessage();
+            }
 
             let activeCount = 0;
             bricks.flat().forEach(b => {
@@ -212,32 +233,81 @@
                     if(ball.x > b.x && ball.x < b.x + b.w && ball.y > b.y && ball.y < b.y + b.h) {
                         ball.dy *= -1; b.status = 0; score += 10;
                         document.getElementById('score').innerText = score;
+                        createParticles(b.x + b.w/2, b.y + b.h/2, b.color);
+                        playSound(550);
+                        if(Math.random() < 0.1) powerUps.push({x: b.x + b.w/2, y: b.y, dy: 3});
                     }
                 }
             });
 
             if(activeCount === 0 && bricks.length > 0) {
                 gameActive = false;
-                if(level % 5 === 0) { // Every 5 levels give 1 Birr
-                    updateWalletOnServer(1);
-                    showMessage("ደረጃ ተጠናቀቀ! 🥳", "1 ብር አግኝተሃል!", "ቀጥል ▶️");
+                if(level === 5) {
+                    walletBalance += 1;
+                    document.getElementById('balance').innerText = walletBalance;
+                    showMessage("ደረጃ 5 ተጠናቀቀ! 🥳", "እንኳን ደስ አለህ! 1 ብር አግኝተሃል! አሁን አካውንትህ ላይ " + walletBalance + " ብር አለ", "ወደ ቀጣዩ ደረጃ ▶️");
                 } else {
-                    showMessage("ደረጃ " + level + " ተጠናቀቀ!", "በጣም ጎበዝ!", "ቀጥል ▶️");
+                    showMessage("ደረጃ " + level + " ተጠናቀቀ!", "በጣም ጎበዝ! ወደ ቀጣዩ ደረጃ ለመለፍ ተዘጋጅ", "ቀጥል ▶️");
                 }
             }
+
+            powerUps.forEach((p, i) => {
+                p.y += p.dy;
+                if(p.y > paddle.y && p.x > paddle.x && p.x < paddle.x + paddle.w) {
+                    paddle.w += 30; setTimeout(() => paddle.w -= 30, 5000);
+                    powerUps.splice(i, 1);
+                    playSound(660);
+                }
+            });
+
+            particles.forEach((p, i) => {
+                p.x += p.dx; p.y += p.dy; p.life -= 0.02;
+                if(p.life <= 0) particles.splice(i, 1);
+            });
+        }
+
+        function draw() {
+            ctx.fillStyle = '#050510';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            bricks.flat().forEach(b => {
+                if(b.status === 1) {
+                    ctx.fillStyle = b.color;
+                    ctx.fillRect(b.x, b.y, b.w, b.h);
+                }
+            });
+
+            ctx.fillStyle = paddle.color;
+            ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+
+            ctx.fillStyle = "#fff";
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+
+            powerUps.forEach(p => { ctx.fillStyle = '#ff0'; ctx.fillText('⭐', p.x, p.y); });
+            particles.forEach(p => {
+                ctx.fillStyle = `rgba(0, 242, 255, ${p.life})`;
+                ctx.fillRect(p.x, p.y, 3, 3);
+            });
+
+            update(); requestAnimationFrame(draw);
         }
 
         function showMessage(title, text, btnText) {
             document.getElementById('msgTitle').innerText = title;
             document.getElementById('msgText').innerText = text;
             document.getElementById('msgBtn').innerText = btnText;
+            document.getElementById('msgBtn').style.display = 'inline-block';
+            document.getElementById('restartBtn').style.display = 'none';
             document.getElementById('msgOverlay').style.display = 'flex';
             isPaused = true;
         }
 
         function showLoseMessage() {
             document.getElementById('msgTitle').innerText = "ተሸንፈሃል! 💔";
+            document.getElementById('msgTitle').style.color = '#e94560';
+            document.getElementById('msgText').innerText = "የደረስክበት ደረጃ " + level + " እንዳይጠፋብህ 30 ሰከንድ ማስታወቂያ አይተህ መቀጠል ትፈልጋለህ?";
             document.getElementById('msgBtn').innerText = "ማስታወቂያ አይቼ ልቀጥል 🎬";
+            document.getElementById('msgBtn').style.display = 'inline-block';
             document.getElementById('restartBtn').style.display = 'inline-block';
             document.getElementById('msgOverlay').style.display = 'flex';
             isPaused = true;
@@ -245,20 +315,30 @@
 
         function handleMsgBtn() {
             document.getElementById('msgOverlay').style.display = 'none';
-            if (document.getElementById('msgTitle').innerText.includes("ተሸንፈሃል")) {
+            if (document.getElementById('msgTitle').innerText.includes("ተሸንፈሃል!")) {
                 startAdTimer(30, "rewarded");
             } else {
                 startAdTimer(5, "interstitial");
             }
         }
 
+        function forceRestart() {
+            document.getElementById('msgOverlay').style.display = 'none';
+            score = 0; level = 1; gameActive = true; isPaused = false;
+            document.getElementById('score').innerText = 0;
+            init();
+        }
+
         function startAdTimer(seconds, mode) {
             currentAdMode = mode;
+            isPaused = true;
             const adOverlay = document.getElementById('adOverlay');
             const adTimer = document.getElementById('adTimer');
             const adCloseBtn = document.getElementById('adCloseBtn');
+
             adTimer.innerText = seconds;
             adCloseBtn.disabled = true;
+            adCloseBtn.innerText = "ይጠብቁ...";
             adOverlay.style.display = 'flex';
 
             let timeLeft = seconds;
@@ -275,14 +355,23 @@
 
         function closeAdVideo() {
             document.getElementById('adOverlay').style.display = 'none';
-            if(currentAdMode === "rewarded") { gameActive = true; isPaused = false; init(); }
-            else { level++; gameActive = true; isPaused = false; init(); }
+            clearInterval(adCountdownTimer);
+            if(currentAdMode === "rewarded") {
+                gameActive = true; isPaused = false; init();
+            } else {
+                level++; gameActive = true; isPaused = false; init();
+            }
         }
 
-        function forceRestart() { location.reload(); }
+        function updateSettings() {
+            let val = parseInt(document.getElementById('speedRange').value);
+            let s = Math.sqrt(ball.dx**2 + ball.dy**2);
+            ball.dx *= (val/s); ball.dy *= (val/s);
+        }
+
         function openSettings() { isPaused = true; document.getElementById('settingsMenu').style.display = 'flex'; }
         function closeSettings() { isPaused = false; document.getElementById('settingsMenu').style.display = 'none'; }
-        function togglePause() { isPaused = !isPaused; }
+        function togglePause() { isPaused = !isPaused; document.getElementById('pauseBtn').innerText = isPaused ? '▶️' : '⏸'; }
 
         const move = e => {
             let x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
