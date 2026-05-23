@@ -381,6 +381,34 @@
         window.addEventListener('touchmove', e => { e.preventDefault(); move(e); }, {passive: false});
 
         init(); draw();
+
+        // 1. ከሰርቨር ላይ ብር ለመጨመር
+async function updateWalletOnServer(amount) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/update-balance`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: amount })
+        });
+        const data = await response.json();
+        if(data.success) {
+            walletBalance = data.balance;
+            document.getElementById('balance').innerText = walletBalance.toFixed(2);
+        }
+    } catch (err) {
+        console.error("ባክኤንድ አልተገናኘም:", err);
+    }
+}
+
+// 2. ያለውን ብር ከሰርቨር ለመጠየቅ
+async function fetchBalance() {
+    try {
+        const res = await fetch(`${BACKEND_URL}/get-balance`);
+        const data = await res.json();
+        walletBalance = data.balance;
+        document.getElementById('balance').innerText = walletBalance.toFixed(2);
+    } catch (e) { console.log("Balance ማምጣት አልተቻለም"); }
+}
     </script>
 </body>
 </html>
