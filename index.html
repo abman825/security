@@ -383,7 +383,7 @@
             }, 1000);
         }
 
-        
+
         function closeAdVideo() {
             document.getElementById('adOverlay').style.display = 'none';
             clearInterval(adCountdownTimer);
@@ -404,7 +404,7 @@
 
         function openSettings() { isPaused = true; document.getElementById('settingsMenu').style.display = 'flex'; }
         function closeSettings() { isPaused = false; document.getElementById('settingsMenu').style.display = 'none'; }
-        function togglePause() { isPaused = !isPaused; document.getElementById('pauseBtn').innerText = isPaused ? '▶️' : '⏸'; }
+        function togglePause() { isPaused = !isPaused; document.getElementById('pauseBtn').innerText = isPaused ? '' : '⏸'; }
 
         const move = e => {
             let x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
