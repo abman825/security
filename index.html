@@ -78,7 +78,7 @@
 
     <div id="msgOverlay" class="overlay">
         <div class="panel">
-            <h1 id="msgTitle" style="color: var(--neon-blue);">ደረጃ ተጠናቀቀ!</h1>
+            <h1 id="msgTitle" style="color: var(--neon-blue);">ደረጃ ተጠነቀቀ!</h1>
             <p id="msgText">በጣም ጎበዝ ነህ!</p>
             <button id="msgBtn" class="main-btn" onclick="handleMsgBtn()">ቀጥል ▶️</button>
             <button id="restartBtn" class="main-btn" style="background:#e94560; display:none;" onclick="forceRestart()">ከመጀመሪያው ጀምር 🔄</button>
@@ -102,6 +102,9 @@
     <canvas id="gameCanvas"></canvas>
 
     <script>
+        // የሰርቨር ሊንክ መገናኛ
+        const BACKEND_URL = "https://tenis-kudk.onrender.com";
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
@@ -131,6 +134,34 @@
                 gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.1);
             } catch(e) {}
+        }
+
+        // ባክኤንድ ላይ ብር ለመጨመር
+        async function updateWalletOnServer(amount) {
+            try {
+                const response = await fetch(`${BACKEND_URL}/update-balance`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: amount })
+                });
+                const data = await response.json();
+                if(data.success) {
+                    walletBalance = data.balance;
+                    document.getElementById('balance').innerText = walletBalance;
+                }
+            } catch (err) {
+                console.log("Sync Error:", err);
+            }
+        }
+
+        // ባክኤንድ ላይ ያለውን ባላንስ ለማምጣት
+        async function fetchBalance() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/get-balance`);
+                const data = await res.json();
+                walletBalance = data.balance;
+                document.getElementById('balance').innerText = walletBalance;
+            } catch (e) { console.log("Balance fetch failed"); }
         }
 
         function init() {
@@ -191,7 +222,7 @@
             }
             particles = []; powerUps = [];
             document.getElementById('level').innerText = level;
-            document.getElementById('balance').innerText = walletBalance;
+            fetchBalance(); // ባላንስ ከሰርቨር አምጣ
         }
 
         function createParticles(x, y, color) {
@@ -243,11 +274,10 @@
             if(activeCount === 0 && bricks.length > 0) {
                 gameActive = false;
                 if(level === 5) {
-                    walletBalance += 1;
-                    document.getElementById('balance').innerText = walletBalance;
-                    showMessage("ደረጃ 5 ተጠናቀቀ! 🥳", "እንኳን ደስ አለህ! 1 ብር አግኝተሃል! አሁን አካውንትህ ላይ " + walletBalance + " ብር አለ", "ወደ ቀጣዩ ደረጃ ▶️");
+                    updateWalletOnServer(1); // ደረጃ 5 ሲያልቅ 1 ብር ጨምር
+                    showMessage("ደረጃ 5 ተጠነቀቀ! 🥳", "እንኳን ደስ አለህ! 1 ብር አግኝተሃል!", "ወደ ቀጣዩ ደረጃ ▶️");
                 } else {
-                    showMessage("ደረጃ " + level + " ተጠናቀቀ!", "በጣም ጎበዝ! ወደ ቀጣዩ ደረጃ ለመለፍ ተዘጋጅ", "ቀጥል ▶️");
+                    showMessage("ደረጃ " + level + " ተጠነቀቀ!", "በጣም ጎበዝ! ወደ ቀጣዩ ደረጃ ለመለፍ ተዘጋጅ", "ቀጥል ▶️");
                 }
             }
 
@@ -357,6 +387,8 @@
             document.getElementById('adOverlay').style.display = 'none';
             clearInterval(adCountdownTimer);
             if(currentAdMode === "rewarded") {
+                // ማስታወቂያ ስላዩ 0.50 ብር በነፃ ይጨመርላቸዋል
+                updateWalletOnServer(0.5); 
                 gameActive = true; isPaused = false; init();
             } else {
                 level++; gameActive = true; isPaused = false; init();
@@ -381,8 +413,6 @@
         window.addEventListener('touchmove', e => { e.preventDefault(); move(e); }, {passive: false});
 
         init(); draw();
-
-     
     </script>
 </body>
 </html>
