@@ -53,12 +53,16 @@
         .ad-container { display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .ad-timer { font-size: 48px; color: var(--neon-pink); font-weight: bold; margin: 20px 0; }
         .ad-box { width: 100%; min-height: 150px; background: #0f172a; border-radius: 15px; display: flex; justify-content: center; align-items: center; margin: 15px 0; border: 1px dashed #334155; overflow: hidden; }
+        
+        /* Settings ውስጥ መረጃ ማሳያ */
+        .info-row { display: flex; justify-content: space-between; margin: 10px 0; color: #ccc; font-size: 14px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .info-row span { color: var(--neon-blue); font-weight: bold; }
    </style>
 </head>
 <body>
     <div id="ui">
         <div>ውጤት: <span id="score">0</span></div>
-        <div id="walletUi">የአሁኑ ገቢ: <span id="balance">0</span> ብር</div>
+        <div id="walletUi">የአሁኑ ገቢ: <span id="balance">0.00</span> ብር</div>
         <div>ደረጃ: <span id="level">1</span></div>
     </div>
 
@@ -69,6 +73,10 @@
         <div class="panel">
             <h2>ማስተካከያ</h2>
             <div style="margin: 20px 0; text-align: left;">
+                <div class="info-row">ስም: <span>አብርሃም (Abe)</span></div>
+                <div class="info-row">የአሁኑ ገቢ: <span id="settingsBalance">0.00 ETB</span></div>
+                <div class="info-row">ደረጃ: <span id="settingsLevel">1</span></div>
+                <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
                 <label>የኳስ ፍጥነት</label>
                 <input type="range" id="speedRange" min="3" max="15" value="6" onchange="updateSettings()" style="width: 100%;">
             </div>
@@ -78,7 +86,7 @@
 
     <div id="msgOverlay" class="overlay">
         <div class="panel">
-            <h1 id="msgTitle" style="color: var(--neon-blue);">ደረጃ ተጠነቀቀ!</h1>
+            <h1 id="msgTitle" style="color: var(--neon-blue);">ደረጃ ተጠናቀቀ!</h1>
             <p id="msgText">በጣም ጎበዝ ነህ!</p>
             <button id="msgBtn" class="main-btn" onclick="handleMsgBtn()">ቀጥል ▶️</button>
             <button id="restartBtn" class="main-btn" style="background:#e94560; display:none;" onclick="forceRestart()">ከመጀመሪያው ጀምር 🔄</button>
@@ -88,21 +96,20 @@
     <div id="adOverlay" class="overlay">
         <div class="panel ad-container">
             <h2 id="adTitle" style="color: var(--neon-pink); margin: 0;">ማስታወቂያ</h2>
-            <p id="adDesc" style="margin: 5px 0; color: #ccc;">ደረጃውን ለማዳን እባክዎ በትዕግስት ይጠብቁ...</p>
+            <p id="adDesc" style="margin: 5px 0; color: #ccc;">ደረጃውን ለማዳን እባክዎን በትዕግስት ይጠብቁ...</p>
 
             <div class="ad-box">
                 <div id="container-d9c95bb7e605081de3e961cccc14a6a6"></div>
             </div>
 
             <div id="adTimer" class="ad-timer">30</div>
-            <button id="adCloseBtn" class="main-btn" disabled onclick="closeAdVideo()">ማስታወቂያ ዝለል ⏩</button>
+            <button id="adCloseBtn" class="main-btn" disabled onclick="closeAdVideo()">ማስታወቂያ ዝለል ⏭</button>
         </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        // የሰርቨር ሊንክ መገናኛ
         const BACKEND_URL = "https://security-kx6m.onrender.com";
 
         const canvas = document.getElementById('gameCanvas');
@@ -113,7 +120,6 @@
         let paddle, ball, bricks = [], particles = [], powerUps = [];
         let currentAdMode = "";
         let adCountdownTimer;
-
 
         const levelConfigs = [
             { rows: 3, cols: 5, speed: 5, paddleW: 160 },
@@ -137,7 +143,6 @@
             } catch(e) {}
         }
 
-        // ባክኤንድ ላይ ብር ለመጨመር
         async function updateWalletOnServer(amount) {
             try {
                 const response = await fetch(`${BACKEND_URL}/update-balance`, {
@@ -148,103 +153,58 @@
                 const data = await response.json();
                 if(data.success) {
                     walletBalance = data.balance;
-                    document.getElementById('balance').innerText = walletBalance;
+                    updateUIBalance();
                 }
-            } catch (err) {
-                console.log("Sync Error:", err);
-            }
+            } catch (err) { console.log("Sync Error:", err); }
         }
 
-        // ባክኤንድ ላይ ያለውን ባላንስ ለማምጣት
         async function fetchBalance() {
             try {
                 const res = await fetch(`${BACKEND_URL}/get-balance`);
                 const data = await res.json();
                 walletBalance = data.balance;
-                document.getElementById('balance').innerText = walletBalance;
+                updateUIBalance();
             } catch (e) { console.log("Balance fetch failed"); }
+        }
+
+        function updateUIBalance() {
+            const formatted = parseFloat(walletBalance).toFixed(2);
+            document.getElementById('balance').innerText = formatted;
+            if(document.getElementById('settingsBalance')) {
+                document.getElementById('settingsBalance').innerText = formatted + " ETB";
+            }
         }
 
         function init() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-
             const config = levelConfigs[Math.min(level - 1, levelConfigs.length - 1)];
-
-            paddle = { 
-                w: config.paddleW, h: 15, 
-                x: (canvas.width - config.paddleW)/2, 
-                y: canvas.height - 60, 
-                color: '#00f2ff' 
-            };
+            paddle = { w: config.paddleW, h: 15, x: (canvas.width - config.paddleW)/2, y: canvas.height - 60, color: '#00f2ff' };
             ball = { x: canvas.width/2, y: paddle.y - 20, r: 8, dx: config.speed, dy: -config.speed };
-
-            const bW = 45; 
-            const bH = 22; 
-            bricks = [];
-
+            const bW = 45; const bH = 22; bricks = [];
             let centerX = Math.floor(config.cols / 2);
             let centerY = Math.floor(config.rows / 2);
             let offSetX = (canvas.width - (config.cols * bW)) / 2;
-
             for(let c=0; c < config.cols; c++) {
                 bricks[c] = [];
                 for(let r=0; r < config.rows; r++) {
-                    let showBrick = false;
-
-                    if (level === 1) {
-                        if (r <= c && r <= (config.cols - 1 - c)) showBrick = true;
-                    } 
-                    else if (level === 2) {
-                        let dist = Math.abs(c - centerX) + Math.abs(r - centerY);
-                        if (dist <= centerX) showBrick = true;
-                    } 
-                    else if (level === 3) {
-                        let dist1 = Math.sqrt((c - 2)**2 + (r - 2)**2);
-                        let dist2 = Math.sqrt((c - (config.cols-3))**2 + (r - 2)**2);
-                        if (dist1 < 3 || dist2 < 3) showBrick = true;
-                    } 
-                    else {
-                        if (c === centerX || r === centerY || c === 0 || c === config.cols-1) showBrick = true;
-                    }
-
+                    let showBrick = (level === 1) ? (r <= c && r <= (config.cols - 1 - c)) : true;
                     if(showBrick) {
-                        bricks[c][r] = { 
-                            x: offSetX + (c * bW), 
-                            y: r * bH + 120, 
-                            w: bW - 4, h: bH - 4, 
-                            status: 1, 
-                            color: `hsl(${(level * 60) + (r * 15)}, 85%, 60%)` 
-                        };
-                    } else {
-                        bricks[c][r] = { status: 0 };
-                    }
+                        bricks[c][r] = { x: offSetX + (c * bW), y: r * bH + 120, w: bW - 4, h: bH - 4, status: 1, color: `hsl(${(level * 60) + (r * 15)}, 85%, 60%)` };
+                    } else { bricks[c][r] = { status: 0 }; }
                 }
             }
             particles = []; powerUps = [];
             document.getElementById('level').innerText = level;
-            fetchBalance(); // ባላንስ ከሰርቨር አምጣ
-        }
-
-        function createParticles(x, y, color) {
-            for(let i=0; i<6; i++) {
-                particles.push({ x, y, dx: (Math.random()-0.5)*4, dy: (Math.random()-0.5)*4, life: 1, color });
-            }
+            fetchBalance();
         }
 
         function update() {
             if(isPaused || !gameActive) return;
-
             ball.x += ball.dx; ball.y += ball.dy;
-
             if(ball.x + ball.r > canvas.width || ball.x - ball.r < 0) ball.dx *= -1;
             if(ball.y - ball.r < 0) ball.dy *= -1;
-
-            if (ball.dy > 0 && 
-                ball.y + ball.r >= paddle.y && 
-                ball.y + ball.r <= paddle.y + paddle.h &&
-                ball.x >= paddle.x && ball.x <= paddle.x + paddle.w) {
-
+            if (ball.dy > 0 && ball.y + ball.r >= paddle.y && ball.y + ball.r <= paddle.y + paddle.h && ball.x >= paddle.x && ball.x <= paddle.x + paddle.w) {
                 let hitPos = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
                 let speed = Math.sqrt(ball.dx**2 + ball.dy**2);
                 ball.dx = speed * hitPos;
@@ -252,12 +212,7 @@
                 ball.y = paddle.y - ball.r; 
                 playSound(440);
             }
-
-            if(ball.y - ball.r > canvas.height) {
-                gameActive = false;
-                showLoseMessage();
-            }
-
+            if(ball.y - ball.r > canvas.height) { gameActive = false; showLoseMessage(); }
             let activeCount = 0;
             bricks.flat().forEach(b => {
                 if(b.status === 1) {
@@ -265,61 +220,27 @@
                     if(ball.x > b.x && ball.x < b.x + b.w && ball.y > b.y && ball.y < b.y + b.h) {
                         ball.dy *= -1; b.status = 0; score += 10;
                         document.getElementById('score').innerText = score;
-                        createParticles(b.x + b.w/2, b.y + b.h/2, b.color);
                         playSound(550);
-                        if(Math.random() < 0.1) powerUps.push({x: b.x + b.w/2, y: b.y, dy: 3});
                     }
                 }
             });
 
             if(activeCount === 0 && bricks.length > 0) {
                 gameActive = false;
-                if(level === 5) {
-                    updateWalletOnServer(1); // ደረጃ 5 ሲያልቅ 1 ብር ጨምር
-                    showMessage("ደረጃ 5 ተጠነቀቀ! 🥳", "እንኳን ደስ አለህ! 1 ብር አግኝተሃል!", "ወደ ቀጣዩ ደረጃ ▶️");
-                } else {
-                    showMessage("ደረጃ " + level + " ተጠነቀቀ!", "በጣም ጎበዝ! ወደ ቀጣዩ ደረጃ ለመለፍ ተዘጋጅ", "ቀጥል ▶️");
-                }
+                // ደረጃ ሲያሸንፍ የሚሰጥ ክፍያ
+                let prize = (level === 5) ? 5 : 0.20; 
+                updateWalletOnServer(prize);
+                
+                let winMsg = (level === 5) ? "ደረጃ 5 ተጠናቀቀ! 5 ብር ተሰጥቶሃል! 🎉" : "ደረጃ " + level + " ተጠናቀቀ! 0.20 ሳንቲም አግኝተሃል!";
+                showMessage("እንኳን ደስ አለህ!", winMsg, "ቀጥል ▶️");
             }
-
-            powerUps.forEach((p, i) => {
-                p.y += p.dy;
-                if(p.y > paddle.y && p.x > paddle.x && p.x < paddle.x + paddle.w) {
-                    paddle.w += 30; setTimeout(() => paddle.w -= 30, 5000);
-                    powerUps.splice(i, 1);
-                    playSound(660);
-                }
-            });
-
-            particles.forEach((p, i) => {
-                p.x += p.dx; p.y += p.dy; p.life -= 0.02;
-                if(p.life <= 0) particles.splice(i, 1);
-            });
         }
 
         function draw() {
-            ctx.fillStyle = '#050510';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            bricks.flat().forEach(b => {
-                if(b.status === 1) {
-                    ctx.fillStyle = b.color;
-                    ctx.fillRect(b.x, b.y, b.w, b.h);
-                }
-            });
-
-            ctx.fillStyle = paddle.color;
-            ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-
-            ctx.fillStyle = "#fff";
-            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
-
-            powerUps.forEach(p => { ctx.fillStyle = '#ff0'; ctx.fillText('⭐', p.x, p.y); });
-            particles.forEach(p => {
-                ctx.fillStyle = `rgba(0, 242, 255, ${p.life})`;
-                ctx.fillRect(p.x, p.y, 3, 3);
-            });
-
+            ctx.fillStyle = '#050510'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            bricks.flat().forEach(b => { if(b.status === 1) { ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h); } });
+            ctx.fillStyle = paddle.color; ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+            ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
             update(); requestAnimationFrame(draw);
         }
 
@@ -335,10 +256,8 @@
 
         function showLoseMessage() {
             document.getElementById('msgTitle').innerText = "ተሸንፈሃል! 💔";
-            document.getElementById('msgTitle').style.color = '#e94560';
-            document.getElementById('msgText').innerText = "የደረስክበት ደረጃ " + level + " እንዳይጠፋብህ 30 ሰከንድ ማስታወቂያ አይተህ መቀጠል ትፈልጋለህ?";
+            document.getElementById('msgText').innerText = "ደረጃ " + level + " እንዳይጠፋብህ ማስታወቂያ አይተህ መቀጠል ትፈልጋለህ?";
             document.getElementById('msgBtn').innerText = "ማስታወቂያ አይቼ ልቀጥል 🎬";
-            document.getElementById('msgBtn').style.display = 'inline-block';
             document.getElementById('restartBtn').style.display = 'inline-block';
             document.getElementById('msgOverlay').style.display = 'flex';
             isPaused = true;
@@ -346,7 +265,7 @@
 
         function handleMsgBtn() {
             document.getElementById('msgOverlay').style.display = 'none';
-            if (document.getElementById('msgTitle').innerText.includes("ተሸንፈሃል!")) {
+            if (document.getElementById('msgTitle').innerText.includes("ተሸንፈሃል")) {
                 startAdTimer(30, "rewarded");
             } else {
                 startAdTimer(5, "interstitial");
@@ -356,42 +275,28 @@
         function forceRestart() {
             document.getElementById('msgOverlay').style.display = 'none';
             score = 0; level = 1; gameActive = true; isPaused = false;
-            document.getElementById('score').innerText = 0;
             init();
         }
 
         function startAdTimer(seconds, mode) {
-            currentAdMode = mode;
-            isPaused = true;
+            currentAdMode = mode; isPaused = true;
             const adOverlay = document.getElementById('adOverlay');
             const adTimer = document.getElementById('adTimer');
             const adCloseBtn = document.getElementById('adCloseBtn');
-
-            adTimer.innerText = seconds;
-            adCloseBtn.disabled = true;
-            adCloseBtn.innerText = "ይጠብቁ...";
+            adTimer.innerText = seconds; adCloseBtn.disabled = true;
             adOverlay.style.display = 'flex';
-
             let timeLeft = seconds;
             adCountdownTimer = setInterval(() => {
-                timeLeft--;
-                adTimer.innerText = timeLeft;
-                if(timeLeft <= 0) {
-                    clearInterval(adCountdownTimer);
-                    adCloseBtn.disabled = false;
-                    adCloseBtn.innerText = "ማስታ ወቂያ ዝለል ⏩";
-                }
+                timeLeft--; adTimer.innerText = timeLeft;
+                if(timeLeft <= 0) { clearInterval(adCountdownTimer); adCloseBtn.disabled = false; }
             }, 1000);
         }
 
-        
         function closeAdVideo() {
             document.getElementById('adOverlay').style.display = 'none';
             clearInterval(adCountdownTimer);
             if(currentAdMode === "rewarded") {
-                // ማስታወቂያ ስላዩ 0.50 ብር በነፃ ይጨመርላቸዋል
-                updateWalletOnServer(0.5); 
-                gameActive = true; isPaused = false; init();
+                updateWalletOnServer(0.5); gameActive = true; isPaused = false; init();
             } else {
                 level++; gameActive = true; isPaused = false; init();
             }
@@ -403,7 +308,12 @@
             ball.dx *= (val/s); ball.dy *= (val/s);
         }
 
-        function openSettings() { isPaused = true; document.getElementById('settingsMenu').style.display = 'flex'; }
+        function openSettings() { 
+            isPaused = true; 
+            document.getElementById('settingsLevel').innerText = level;
+            updateUIBalance();
+            document.getElementById('settingsMenu').style.display = 'flex'; 
+        }
         function closeSettings() { isPaused = false; document.getElementById('settingsMenu').style.display = 'none'; }
         function togglePause() { isPaused = !isPaused; document.getElementById('pauseBtn').innerText = isPaused ? '▶️' : '⏸'; }
 
@@ -418,3 +328,4 @@
     </script>
     <script src="https://pl29525688.effectivecpmnetwork.com/c3/7f/56/c37f5647a9089b9164d698458795dddd.js"></script>
 </body>
+</html>
